@@ -6,7 +6,7 @@ CC=clang
 CFLAGS=-Wall -Wextra -pedantic
 CDEFS=-DUSE_NIST_RAND=1 -DOPENSSL_ROOT_DIR=$(OPENSSL) # -DVERBOSE=1
 
-SRC=src/main.c bike-kem/tests/FromNIST/rng.c
+SRC=src/main.c bike-kem/tests/FromNIST/rng.c src/util.c src/import.c src/export.c
 BUILDDIR=build/
 BIN=main.bin
 
