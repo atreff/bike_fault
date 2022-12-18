@@ -15,5 +15,5 @@ void bin2hex(const uint8_t *in, char *out, size_t len) {
         out[i*2]   = HEX[in[i] >> 4];
 		out[i*2+1] = HEX[in[i] & 0x0F];
     }
-    out[len] = '\0';
+    out[2*len] = '\0';
 }

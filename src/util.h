@@ -1,8 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include <stddef.h> // offsetof, size_t
+#include <stdint.h> // uint8_t
 
 #include "kem.h"
 

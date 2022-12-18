@@ -2,6 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if LEVEL == 1
+    static const char KAT_FILEPATH[] = "./kat/KAT_L1.rsp";
+#elif LEVEL == 3
+    static const char KAT_FILEPATH[] = "./kat/KAT_L3.rsp";
+#else
+#error Unknown level!
+
+#endif
+
 #include "kem.h"
 #include "internal/types.h"
 #include "internal/gf2x.h"
@@ -10,6 +19,7 @@
 
 #include "export.h"
 #include "import.h"
+#include "next.h"
 #include "util.h"
 
 void keypair_internal(uint8_t *pk, uint8_t *sk) {
@@ -53,11 +63,31 @@ int main() {
     // for (int i = 0; i < R_BYTES; ++i) {
     //   printf("%02x ", sk1[i+sizeof(compressed_idx_d_ar_t)]);
     // }
-    import_keys_aws("./kat/PQCkemKAT_BIKE_5223.rsp", sk2);
+
+
+    uint8_t *seedbuf = malloc(48);
+    uint8_t *sigmabuf = malloc(M_BYTES);
+
+    int ret = import_keys_aws(KAT_FILEPATH, sk2, seedbuf, sigmabuf);
+    if (ret != 0) {
+      printf("Error opening KAT file: %d\n", ret);
+    }
+
+    printf("Seed: ");
+    for (unsigned int i = 0; i < 48; ++i){
+      printf("%02x ", seedbuf[i]);
+    }
+    printf("\n");
+    printf("Sigma: ");
+    for (unsigned int i = 0; i < M_BYTES; ++i){
+      printf("%02x ", sigmabuf[i]);
+    }
+    printf("\n");
     
     keypair_internal(pk2, sk2);
-    export_keys_aws("./kat/export.rsp", sk2, pk2);
+    export_keys_aws("./kat/export.rsp", sk2, pk2, sigmabuf, seedbuf);
 
+    free(seedbuf);
 
     // memcpy(sk2, sk1, sizeof(sk_t)); // create copy of original state
 
@@ -88,5 +118,12 @@ int main() {
     if (sk_cmp != pk_cmp && pk_cmp == 0) {
       printf("In case of fault: apparently you changed the wrong region of the secret key!\n");
     }
+
+    uint8_t *sk_ptr = sk2;
+    uint8_t *pk_ptr = pk2;
+
+    proceed(h0, h1, sk_ptr, pk_ptr);
+    free(sigmabuf);
+
     return 0;
 }
