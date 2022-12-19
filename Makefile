@@ -18,7 +18,7 @@ all:
 	cd build/libbike && cmake ../../bike-kem $(CDEFS)
 	cd build/libbike && make
 	cp build/libbike/libbike.a build/
-	$(CC) $(CFLAGS) $(CDEFS) $(LIBS) $(INCLUDE) $(SRC) -o $(BUILDDIR)$(BIN)
+	$(CC) $(CFLAGS) $(CDEFS) $(INCLUDE) $(SRC) -o $(BUILDDIR)$(BIN) $(LIBS)
 
 clean:
 	rm -rf build/libbike
