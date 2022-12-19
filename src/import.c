@@ -1,5 +1,5 @@
 #include <assert.h> // assert
-#include <stdbool.h> // bool
+#include <stdbool.h> // bool, true, false
 #include <stddef.h> // NULL
 #include <stdint.h> // uint8_t, uint32_t
 #include <stdlib.h> // malloc, free
@@ -43,11 +43,12 @@ int import_keys_aws(const char *filename, uint8_t *sk, uint8_t *seed, uint8_t *s
     fseek(f, 0, SEEK_END);
     long file_len = ftell(f);
     fseek(f, 0, SEEK_SET);
+
     char *buf = malloc(file_len);
     char *ptr = NULL;
     char *seed_ptr = NULL;
     char *seed_buf = malloc(48 * 2 + 1);
-    while (1) {
+    while (true) {
       if (fgets(buf, file_len, f) != NULL) {
         if (strncmp(buf, "\n", 1) == 0 && ptr != NULL && seed_ptr != NULL) {
           break;
@@ -61,7 +62,7 @@ int import_keys_aws(const char *filename, uint8_t *sk, uint8_t *seed, uint8_t *s
         }
         if (strncmp(buf, sk_to_cmp, strlen(sk_to_cmp)) == 0) {
           ptr = strstr(buf, " = ");
-          ptr+=3; // skip ' = '
+          ptr += 3; // skip ' = '
           ptr[strcspn(ptr, "\n")] = 0;
           break;
         }
@@ -93,10 +94,10 @@ int import_keys_aws(const char *filename, uint8_t *sk, uint8_t *seed, uint8_t *s
 
     hex2bin(seed_buf, seed, 48);
     free(seed_buf);
-    hex2bin(ptr, sk+sizeof(compressed_idx_d_ar_t), 2*R_BYTES);
-    create_wlist_from_bin(sk+sizeof(compressed_idx_d_ar_t), (uint32_t*)sk, 2*D);
-    ptr += 2*2*R_BYTES; // skip h0 and h1
-    ptr += 2*R_BYTES; // skip h
+    hex2bin(ptr, sk + sizeof(compressed_idx_d_ar_t), 2 * R_BYTES);
+    create_wlist_from_bin(sk + sizeof(compressed_idx_d_ar_t), (uint32_t*)sk, 2 * D);
+    ptr += 2 * (2 * R_BYTES); // skip h0 and h1
+    ptr += 2 * R_BYTES; // skip h
     hex2bin(ptr, sigma, M_BYTES);
 
     free(buf);
@@ -104,8 +105,11 @@ int import_keys_aws(const char *filename, uint8_t *sk, uint8_t *seed, uint8_t *s
 }
 
 
-void import_keys_ref(const char *filename, uint8_t *sk) {
+int import_keys_ref(const char *filename, uint8_t *sk) {
     FILE *f = fopen(filename, "r");
+    if (f == NULL) {
+      return 1;
+    }
     fseek(f, 0, SEEK_END);
     long file_len = ftell(f);
     fseek(f, 0, SEEK_SET);
@@ -138,4 +142,5 @@ void import_keys_ref(const char *filename, uint8_t *sk) {
 
     hex2bin(ptr, sk, 2 * R_BYTES);
     free(buf);
+    return 0;
 }

@@ -19,7 +19,6 @@
 
 #include "export.h"
 #include "import.h"
-#include "next.h"
 #include "util.h"
 
 void keypair_internal(uint8_t *pk, uint8_t *sk) {
@@ -122,7 +121,6 @@ int main() {
     uint8_t *sk_ptr = sk2;
     uint8_t *pk_ptr = pk2;
 
-    proceed(h0, h1, sk_ptr, pk_ptr);
     free(sigmabuf);
 
     return 0;

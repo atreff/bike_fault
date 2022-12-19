@@ -17,7 +17,7 @@ void export_keys_aws(const char *filename, uint8_t *sk, uint8_t *pk, uint8_t *si
     char *seed_hex = malloc(2 * 48 + 1);
     char *pk_hex = malloc(2 * R_BYTES + 1);
     char *sk_hex = malloc(2 * (2 * R_BYTES) + 1);
-    char *wlist_hex = malloc(2 * (2 * D) + 1);
+    char *wlist_hex = malloc(2 * (2 * (4 * D)) + 1);
     char *sigma_hex = malloc(2 * M_BYTES + 1);
 
     bin2hex(seed, seed_hex, 48);
