@@ -1,3 +1,3 @@
 [submodule "bike-kem"]
 	path = bike-kem
-	url = https://github.com/awslabs/bike-kem
+	url = https://github.com/atreff/bike-kem
