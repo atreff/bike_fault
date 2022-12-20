@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef KEY_PAIR
 #if LEVEL == 1
     static const char KAT_FILEPATH[] = "./kat/KAT_L1.rsp";
 #elif LEVEL == 3
@@ -10,6 +11,7 @@
 #error Unknown level!
 
 #endif
+#endif // KEY_PAIR
 
 #include "kem.h"
 #include "internal/types.h"
@@ -38,14 +40,35 @@ void keypair_internal(uint8_t *pk, uint8_t *sk) {
   gf2x_mod_inv(&h0inv, &h0);
   gf2x_mod_mul(&h, &h1, &h0inv);
 
-  // print("h0: ", (uint64_t *)&h0, R_BITS);
-  // print("h0i:", (uint64_t *)&h0inv, R_BITS);
-  // print("h1: ", (uint64_t *)&h1, R_BITS);
-  // print("h:  ", (uint64_t *)&h, R_BITS);
-
   memcpy(pk, h.val.raw, R_BYTES);
 }
 
+#ifdef KEY_PAIR
+int main(int argc, char **argv) {
+    uint8_t sk[sizeof(sk_t)] = {0};
+    uint8_t pk[sizeof(pk_t)] = {0};
+    char pk_hex[sizeof(pk_t)*2+1] = {0};
+    int len;
+
+    if (argc != 2) {
+      printf("wrong number of arguments, just pass a secret key as hex string\n");
+      return 1;
+    }
+    len = strlen(argv[1]);
+    if (len != sizeof(sk_t) *2) {
+      printf("wrong input length: supposed to be %lu, actually %d\n", sizeof(sk_t) *2, len);
+      return 1;
+    }
+
+    hex2bin(argv[1], sk, len/2);
+    keypair_internal(pk, sk);
+    bin2hex(pk, pk_hex, sizeof(pk_t));
+
+    printf("%s\n", pk_hex);
+
+    return 0;
+}
+#else // KEY_PAIR
 int main() {
     uint8_t sk1[sizeof(sk_t)] = {0};
     uint8_t pk1[sizeof(pk_t)] = {0};
@@ -53,16 +76,12 @@ int main() {
     uint8_t pk2[sizeof(pk_t)] = {0};
 
 #ifdef USE_NIST_RAND
-    char seed_hex[]= "061550234D158C5EC95595FE04EF7A25767F2E24CC2BC479D09D86DC9ABCFDE7056A8C266F9EF97ED08541DBD2E1FFA1";  
+    char seed_hex[]= "061550234D158C5EC95595FE04EF7A25767F2E24CC2BC479D09D86DC9ABCFDE7056A8C266F9EF97ED08541DBD2E1FFA1";
     unsigned char seed[48];
     hex2bin(seed_hex, seed, 48);
     randombytes_init(seed, NULL, 256);
 #endif
     crypto_kem_keypair(pk1, sk1);
-    // for (int i = 0; i < R_BYTES; ++i) {
-    //   printf("%02x ", sk1[i+sizeof(compressed_idx_d_ar_t)]);
-    // }
-
 
     uint8_t *seedbuf = malloc(48);
     uint8_t *sigmabuf = malloc(M_BYTES);
@@ -82,10 +101,11 @@ int main() {
       printf("%02x ", sigmabuf[i]);
     }
     printf("\n");
-    
-    keypair_internal(pk2, sk2);
-    export_keys_aws("./kat/export.rsp", sk2, pk2, sigmabuf, seedbuf);
 
+    keypair_internal(pk2, sk2);
+    //export_keys_aws("./kat/export.rsp", sk2, pk2, sigmabuf, seedbuf);
+
+    printf("hihi\n");
     free(seedbuf);
 
     // memcpy(sk2, sk1, sizeof(sk_t)); // create copy of original state
@@ -118,10 +138,11 @@ int main() {
       printf("In case of fault: apparently you changed the wrong region of the secret key!\n");
     }
 
-    uint8_t *sk_ptr = sk2;
-    uint8_t *pk_ptr = pk2;
+    // uint8_t *sk_ptr = sk2;
+    // uint8_t *pk_ptr = pk2;
 
     free(sigmabuf);
 
     return 0;
 }
+#endif // KEY_PAIR

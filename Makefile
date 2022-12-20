@@ -2,9 +2,11 @@
 
 OPENSSL=/usr/local/Cellar/openssl@1.1/1.1.1s
 
+LVL =$(if $(LEVEL),$(LEVEL),1)
+
 CC=clang
 CFLAGS=-Wall -Wextra -pedantic
-CDEFS=-DUSE_NIST_RAND=1 -DOPENSSL_ROOT_DIR=$(OPENSSL) -DLEVEL=1 -DVERBOSE=1
+CDEFS=-DUSE_NIST_RAND=1 -DOPENSSL_ROOT_DIR=$(OPENSSL) -DLEVEL=$(LVL) -DVERBOSE=1 $(if $(KEYPAIR), -DKEY_PAIR=1)
 
 SRC=src/main.c src/util.c src/import.c src/export.c bike-kem/tests/FromNIST/rng.c
 BUILDDIR=build/
