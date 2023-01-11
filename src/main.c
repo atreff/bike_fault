@@ -23,7 +23,10 @@
 #include "import.h"
 #include "util.h"
 
-void keypair_internal(uint8_t *pk, uint8_t *sk) {
+
+// This function is based on crypto_kem_keypair from AWS implementation,
+// but without SK generation, i.e., sk needs to be supplied via parameter.
+void gen_pk_from_sk(uint8_t *pk, uint8_t *sk) {
   // The secret key is (h0, h1),
   // and the public key h=(h0^-1 * h1).
   // Padded structures are used internally, and are required by the
@@ -41,6 +44,8 @@ void keypair_internal(uint8_t *pk, uint8_t *sk) {
   gf2x_mod_mul(&h, &h1, &h0inv);
 
   memcpy(pk, h.val.raw, R_BYTES);
+  // also copy calculated public key to PK section of private key
+  memcpy(sk+sizeof(compressed_idx_d_ar_t)+2*R_BYTES, h.val.raw, R_BYTES);
 }
 
 #ifdef KEY_PAIR
@@ -61,7 +66,7 @@ int main(int argc, char **argv) {
     }
 
     hex2bin(argv[1], sk, len/2);
-    keypair_internal(pk, sk);
+    gen_pk_from_sk(pk, sk);
     bin2hex(pk, pk_hex, sizeof(pk_t));
 
     printf("%s\n", pk_hex);
@@ -102,23 +107,28 @@ int main() {
     }
     printf("\n");
 
-    keypair_internal(pk2, sk2);
-    //export_keys_aws("./kat/export.rsp", sk2, pk2, sigmabuf, seedbuf);
+    // Generate corresponding public key
 
-    printf("hihi\n");
+    gen_pk_from_sk(pk2, sk2);
+
+    // Export key again to hex format
+    ret = export_keys_aws("./kat/export.rsp", sk2, pk2, sigmabuf, seedbuf);
+    if (ret != 0) {
+      printf("Error while writing KAT file.\n");
+    }
+
     free(seedbuf);
 
     // memcpy(sk2, sk1, sizeof(sk_t)); // create copy of original state
 
     uint8_t *h0 = &sk1[sizeof(compressed_idx_d_ar_t)]; // skip wlist
-    uint8_t *h1 = &sk1[sizeof(compressed_idx_d_ar_t)+R_BYTES]; // skip wlist and h0
+    uint8_t *h1 = &sk1[sizeof(compressed_idx_d_ar_t) + R_BYTES]; // skip wlist and h0
 
     uint8_t *h0_1 = &sk2[sizeof(compressed_idx_d_ar_t)]; // skip wlist
-    uint8_t *h1_1 = &sk2[sizeof(compressed_idx_d_ar_t)+R_BYTES]; // skip wlist and h0
+    uint8_t *h1_1 = &sk2[sizeof(compressed_idx_d_ar_t) + R_BYTES]; // skip wlist and h0
 
 
     // h1[R_BYTES] ^=  1;
-
 
     int sk_cmp = memcmp(sk1, sk2, sizeof(sk_t));
     int h0_cmp = memcmp(h0, h0_1, R_BYTES);

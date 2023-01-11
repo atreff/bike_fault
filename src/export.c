@@ -1,19 +1,13 @@
 #include <stdlib.h> // malloc, free
 #include <stdint.h> // uint8_t
-#include <stdio.h> // FILE, fopen, fwrite, fclose
+#include <stdio.h> // FILE, fopen, fputs, fclose
 #include <string.h> // strlen
 
 #include "internal/bike_defs.h" // R_BYTES, M_BYTES, D
 #include "export.h"
 #include "util.h" //bin2hex
 
-void export_keys_aws(const char *filename, uint8_t *sk, uint8_t *pk, uint8_t *sigma, uint8_t *seed) {
-    const char *header = "# BIKE\n\ncount = 0\nseed = ";
-    const char *text_pk = "pk = ";
-    const char *text_sk = "sk = ";
-    const char *text_ct = "ct = *\n";
-    const char *text_ss = "ss = *\n";
-
+int export_keys_aws(const char *filename, uint8_t *sk, uint8_t *pk, uint8_t *sigma, uint8_t *seed) {
     char *seed_hex = malloc(2 * 48 + 1);
     char *pk_hex = malloc(2 * R_BYTES + 1);
     char *sk_hex = malloc(2 * (2 * R_BYTES) + 1);
@@ -27,20 +21,30 @@ void export_keys_aws(const char *filename, uint8_t *sk, uint8_t *pk, uint8_t *si
     bin2hex(sigma, sigma_hex, M_BYTES);
 
     FILE *f = fopen(filename, "w");
-    fwrite(header, strlen(header), 1, f);
-    fwrite(seed_hex, strlen(seed_hex), 1, f);
-    fwrite("\n", 1, 1, f);
-    fwrite(text_pk, strlen(text_pk), 1, f);
-    fwrite(pk_hex, strlen(pk_hex), 1, f);
-    fwrite("\n", 1, 1, f);
-    fwrite(text_sk, strlen(text_sk), 1, f);
-    fwrite(wlist_hex, strlen(wlist_hex), 1, f);
-    fwrite(sk_hex, strlen(sk_hex), 1, f);
-    fwrite(pk_hex, strlen(pk_hex), 1, f);
-    fwrite(sigma_hex, strlen(sigma_hex), 1, f);
-    fwrite("\n", 1, 1, f);
-    fwrite(text_ct, strlen(text_ct), 1, f);
-    fwrite(text_ss, strlen(text_ss), 1, f);
+    if (f == NULL) {
+        return 1;
+    }
+    fputs(
+"# BIKE\n"
+"\n"
+"count = 0\n"
+"seed = ", f);
+    fputs(seed_hex, f);
+    fputs(
+"\n"
+"pk = ", f);
+    fputs(pk_hex, f);
+    fputs(
+"\n"
+"sk = ", f);
+    fputs(wlist_hex, f);
+    fputs(sk_hex, f);
+    fputs(pk_hex, f);
+    fputs(sigma_hex, f);
+    fputs(
+"\n"
+"ct = *\n"
+"ss = *\n", f);
     fclose(f);
 
     free(seed_hex);
@@ -48,4 +52,5 @@ void export_keys_aws(const char *filename, uint8_t *sk, uint8_t *pk, uint8_t *si
     free(sk_hex);
     free(wlist_hex);
     free(sigma_hex);
+    return 0;
 }
