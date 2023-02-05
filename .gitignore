@@ -53,5 +53,8 @@ dkms.conf
 
 
 # Custom
+bin/
 build/
+obj/
 kat/export.rsp
+*.txt

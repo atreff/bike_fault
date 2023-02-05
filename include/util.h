@@ -6,6 +6,8 @@
 
 #include "kem.h"
 
+void print_help();
+
 void hex2bin(const char *in, uint8_t *out, size_t len);
 void bin2hex(const uint8_t *in, char *out, size_t len);
 

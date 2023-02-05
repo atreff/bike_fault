@@ -18,35 +18,19 @@
 #include "internal/gf2x.h"
 #include "internal/utilities.h"
 #include "internal/sampling.h"
+#include "bike_fromnist_rng.h"
+
 
 #include "export.h"
 #include "import.h"
+#include "next.h"
 #include "util.h"
+#include "parse_args.h"
+#include "dist_spectrum.h"
+#include "gen_pk_from_sk.h"
 
+extern AES256_CTR_DRBG_struct DRBG_ctx;
 
-// This function is based on crypto_kem_keypair from AWS implementation,
-// but without SK generation, i.e., sk needs to be supplied via parameter.
-void gen_pk_from_sk(uint8_t *pk, uint8_t *sk) {
-  // The secret key is (h0, h1),
-  // and the public key h=(h0^-1 * h1).
-  // Padded structures are used internally, and are required by the
-  // decoder and the gf2x multiplication.
-  pad_r_t h0 = {0};
-  pad_r_t h1 = {0};
-  pad_r_t h0inv = {0};
-  pad_r_t h = {0};
-
-  memcpy(h0.val.raw, sk+sizeof(compressed_idx_d_ar_t), sizeof(r_t));
-  memcpy(h1.val.raw, sk+sizeof(compressed_idx_d_ar_t)+R_BYTES, sizeof(r_t));
-
-  // Calculate the public key
-  gf2x_mod_inv(&h0inv, &h0);
-  gf2x_mod_mul(&h, &h1, &h0inv);
-
-  memcpy(pk, h.val.raw, R_BYTES);
-  // also copy calculated public key to PK section of private key
-  memcpy(sk+sizeof(compressed_idx_d_ar_t)+2*R_BYTES, h.val.raw, R_BYTES);
-}
 
 #ifdef KEY_PAIR
 int main(int argc, char **argv) {
@@ -74,7 +58,20 @@ int main(int argc, char **argv) {
     return 0;
 }
 #else // KEY_PAIR
-int main() {
+
+
+int main(int argc, char **argv) {
+    tool_args_t args;
+    parse_args(argc, argv, &args);
+
+    if (args.show_help) {
+        print_help();
+        return 0;
+    }
+    if (args.verbose) {
+        printf("Verbose specified.\n");
+    }
+
     uint8_t sk1[sizeof(sk_t)] = {0};
     uint8_t pk1[sizeof(pk_t)] = {0};
     uint8_t sk2[sizeof(sk_t)] = {0};
@@ -107,7 +104,32 @@ int main() {
     }
     printf("\n");
 
+    // FAULT YOUR SECRET KEY (sk2) HERE AS YOU LIKE
+    // curly braces are intended to limit scope of pointers used in sample code
+    // I have not tested the code below, but it should give you an idea ;)
+    {
+    /*
+    // Example: fault wlist data:
+    uint32_t *wlist_h0 = &(uint32_t*)sk2[0];
+    uint32_t *wlist_h1 = &(uint32_t*)sk2[WLIST_LEN/2];
+    wlist_h0[5] ^= 0x000000ff; // toggle lowest byte of fifth weight list entry of h0
+    wlist_h1[10] |= 0xff000000; // set highest byte of tenth weight list entry of h1
+    wlist_h0[4] = wlist_h0[40]; // set fourth weight list entry of h0 to fourtiest weight list entry of h0
+    */
+
+    /*
+    // Example: fault wlist data:
+    uint8_t *raw_h0 = sk2[WLIST_LEN];
+    uint8_t *raw_h1 = sk2[WLIST_LEN+R_BYTES/2];
+    raw_h0[500] ^= 0x01; // flip lowest bit of byte #500 of h0
+    raw_h1[1000] = 0x40; // set byte #1000 of h1 to 0x40 (i.e., 01000000 in binary representation)
+    raw_h1[1020] = 0x55; // set byte #1020 of h1 to 0x55 (i.e., 01010101 in binary representation)
+    */
+    }
+
     // Generate corresponding public key
+
+    memcpy(sk2, sk1, WLIST_LEN+R_BYTES*2);
 
     gen_pk_from_sk(pk2, sk2);
 
@@ -118,8 +140,9 @@ int main() {
     }
 
     free(seedbuf);
+    free(sigmabuf);
 
-    // memcpy(sk2, sk1, sizeof(sk_t)); // create copy of original state
+    memcpy(sk2, sk1, sizeof(sk_t)); // create copy of original state
 
     uint8_t *h0 = &sk1[sizeof(compressed_idx_d_ar_t)]; // skip wlist
     uint8_t *h1 = &sk1[sizeof(compressed_idx_d_ar_t) + R_BYTES]; // skip wlist and h0
@@ -127,8 +150,6 @@ int main() {
     uint8_t *h0_1 = &sk2[sizeof(compressed_idx_d_ar_t)]; // skip wlist
     uint8_t *h1_1 = &sk2[sizeof(compressed_idx_d_ar_t) + R_BYTES]; // skip wlist and h0
 
-
-    // h1[R_BYTES] ^=  1;
 
     int sk_cmp = memcmp(sk1, sk2, sizeof(sk_t));
     int h0_cmp = memcmp(h0, h0_1, R_BYTES);
@@ -148,10 +169,40 @@ int main() {
       printf("In case of fault: apparently you changed the wrong region of the secret key!\n");
     }
 
-    // uint8_t *sk_ptr = sk2;
-    // uint8_t *pk_ptr = pk2;
+    // report_distance_spectrum(h0, R_BYTES, R_BITS, "h0");
+    // report_distance_spectrum(h1, R_BYTES, R_BITS, "h1");
+    // report_distance_spectrum(pk1, R_BYTES, R_BITS, "h");
 
-    free(sigmabuf);
+    uint8_t* fresh_h0 = malloc(R_BYTES);
+    uint8_t* fresh_h1 = malloc(R_BYTES);
+    uint8_t* fresh_seed = malloc(48);
+    uint8_t* fresh_sk2 = malloc(sizeof(sk_t));
+    uint8_t* fresh_pk2 = malloc(sizeof(pk_t));
+
+    const size_t aes_struct_size = sizeof(DRBG_ctx);
+    uint8_t drbg_buf[aes_struct_size];
+    uint8_t *drbg_ptr = (uint8_t*)&DRBG_ctx;
+    memcpy(drbg_buf, drbg_ptr, aes_struct_size); // save state
+    
+    const uint32_t NUM_RUNS = 100;
+    for (uint32_t i = 0; i < NUM_RUNS; ++i) {
+      memcpy(fresh_sk2, sk1, sizeof(sk_t));
+      memcpy(fresh_pk2, pk1, sizeof(pk_t));
+      printf("Run %u of %u: ", i+1, NUM_RUNS);
+      int fault_offset = rand() % (R_BYTES);
+      fresh_sk2[WLIST_LEN+fault_offset] ^= 1;
+      printf("(faulting at %d)", fault_offset);
+
+      // memcpy(drbg_ptr, drbg_buf, aes_struct_size); // restore state
+
+      proceed(fresh_h0, fresh_h1, fresh_sk2, fresh_pk2, fresh_seed);
+    }
+
+    free(fresh_h0);
+    free(fresh_h1);
+    free(fresh_seed);
+    free(fresh_sk2);
+    free(fresh_pk2);
 
     return 0;
 }

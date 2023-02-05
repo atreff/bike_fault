@@ -3,6 +3,15 @@
 #include <stdio.h>
 #include "util.h"
 
+void print_help() {
+    printf(
+        "BIKE Tool\n"
+        "Possible arguments:\n"
+        "\t-h/--help\t\tprints this help.\n"
+        "\t-v/--verbose\t\tverbose output.\n"
+        "\t-i/--iterations=ITER\tsets number of iterations.\n");
+}
+
 void hex2bin(const char *in, uint8_t *out, size_t len) {
     for (size_t i = 0; i < len; ++i) {
         sscanf(&in[2*i], "%2hhx", &out[i]);
